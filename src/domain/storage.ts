@@ -1,5 +1,6 @@
-import { canPlace, COLORS, isDateKey } from './time'
-import type { BlockColor, TimeBlock } from './time'
+import { canPlace, isDateKey } from './time'
+import type { TimeBlock } from './time'
+import { isBlockColor } from './palette'
 
 export const STORAGE_KEY = 'day-canvas.blocks.v1'
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>
@@ -22,7 +23,7 @@ export function loadBlocks(storage: StoragePort): { blocks: TimeBlock[]; warning
       const block: TimeBlock = {
         id: record.id, date: record.date, title: record.title.trim(),
         startMinute: record.startMinute, endMinute: record.endMinute,
-        color: COLORS.includes(record.color as BlockColor) ? record.color as BlockColor : 'sage',
+        color: isBlockColor(record.color) ? record.color : 'sage',
       }
       if (canPlace(block, blocks, block.date)) blocks.push(block)
       else skipped = true

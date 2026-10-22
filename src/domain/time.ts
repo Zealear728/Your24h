@@ -1,14 +1,10 @@
+import type { BlockColor } from './palette'
+
 export const DAY_MINUTES = 1440
 export const STEP = 30
 export const HOUR_HEIGHT = 80
 export const MINUTE_HEIGHT = HOUR_HEIGHT / 60
 export const DRAG_THRESHOLD = 6
-
-export const COLORS = ['sage', 'lavender', 'peach', 'sky', 'neutral'] as const
-export type BlockColor = (typeof COLORS)[number]
-export const COLOR_LABELS: Record<BlockColor, string> = {
-  sage: '鼠尾草', lavender: '薰衣草', peach: '蜜桃', sky: '晴空', neutral: '燕麦',
-}
 
 export interface TimeRange {
   startMinute: number
@@ -111,3 +107,4 @@ export function resizedRange(block: TimeBlock, edge: 'start' | 'end', delta: num
     ? { startMinute: clamp(block.startMinute + snapMinute(delta), free.startMinute, block.endMinute - STEP), endMinute: block.endMinute }
     : { startMinute: block.startMinute, endMinute: clamp(block.endMinute + snapMinute(delta), block.startMinute + STEP, free.endMinute) }
 }
+

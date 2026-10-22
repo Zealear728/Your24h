@@ -3,7 +3,9 @@ import {
   canPlace, clamp, creationRange, DAY_MINUTES, DRAG_THRESHOLD, formatRange, isDateKey,
   localDate, MINUTE_HEIGHT, movedRange, resizedRange, shiftDate,
 } from '../domain/time'
-import type { BlockColor, TimeBlock, TimeRange } from '../domain/time'
+import type { TimeBlock, TimeRange } from '../domain/time'
+import { nextBlockColor } from '../domain/palette'
+import type { BlockColor } from '../domain/palette'
 import { loadBlocks, saveBlocks } from '../domain/storage'
 
 type GestureKind = 'create' | 'move' | 'start' | 'end'
@@ -101,7 +103,7 @@ export function useCanvas() {
   function newBlock(range: TimeRange) {
     if (!canPlace(range, blocks.value, selectedDate.value)) return
     const block: TimeBlock = {
-      ...range, id: crypto.randomUUID(), date: selectedDate.value, title: '', color: 'sage',
+      ...range, id: crypto.randomUUID(), date: selectedDate.value, title: '', color: nextBlockColor(blocks.value),
     }
     editor.value = { block, isNew: true, text: '' }
   }

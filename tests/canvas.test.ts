@@ -328,4 +328,102 @@ describe('画布DOM交互与持久化', () => {
     await nextTick()
     expect(app.get('.now-time').text()).toBe('00:00')
   })
+
+  it('连续保存的新块轮换颜色，取消或提交空标题不占用颜色', async () => {
+    boot()
+    for (let index = 0; index < 6; index++) {
+      await draw(480 + index * 60)
+      await title('取消', 'Escape')
+      await draw(480 + index * 60)
+      await title('  ')
+      await draw(480 + index * 60)
+      await title(`安排 ${index}`)
+    }
+    expect(records().map(block => block.color)).toEqual(['sage', 'lavender', 'sky', 'peach', 'rose', 'sage'])
+    expect(app.get('[data-block-id="' + records()[4].id + '"]').element.getAttribute('style')).toContain('#F1CFD8')
+  })
+
+  it('按创建顺序配色，跨日和刷新接续轮换，手动颜色在编辑移动后保持', async () => {
+    boot()
+    await draw(1140)
+    await title('先建晚上')
+    await draw(540)
+    await title('后建早上')
+    expect(records().map(block => block.color)).toEqual(['sage', 'lavender'])
+    await app.get('[aria-label="更换 后建早上 的颜色"]').trigger('click')
+    await app.get('[aria-label="玫瑰"]').trigger('click')
+    const secondId = records()[1].id
+    await drag(secondId, 550, 610)
+    await app.get(`[data-block-id="${secondId}"] .block-title`).trigger('click')
+    await title('手动粉色')
+    expect(records()[1]).toMatchObject({ color: 'rose', startMinute: 600 })
+    const saved = records()
+    app.unmount()
+    boot(saved)
+    await app.get('[aria-label="后一天"]').trigger('click')
+    await flushPromises()
+    await draw(540)
+    await title('明天')
+    expect(records().slice(0, 2)).toEqual(saved)
+    expect(records()[2]).toMatchObject({ date: shiftDate(today, 1), color: 'sage' })
+    await app.get('[aria-label="前一天"]').trigger('click')
+    await flushPromises()
+    expect(records().slice(0, 2)).toEqual(saved)
+  })
+
+  it('旧燕麦保持原色；打开页面与切换日期不会重写已有数据', async () => {
+    const blocks: TimeBlock[] = [{ ...item('old', 540, 570), color: 'neutral' }]
+    boot(blocks)
+    const writes = vi.spyOn(Storage.prototype, 'setItem')
+    expect((app.get('.time-block').element as HTMLElement).style.getPropertyValue('--block-bg')).toBe('#EEECE4')
+    await app.get('[aria-label="后一天"]').trigger('click')
+    await app.get('[aria-label="前一天"]').trigger('click')
+    await flushPromises()
+    expect(writes).not.toHaveBeenCalled()
+    expect(records()).toEqual(blocks)
+    await draw(600)
+    await title('新绿')
+    expect(records()[0]).toEqual(blocks[0])
+    expect(records()[1].color).toBe('sage')
+  })
+
+  it.each([
+    { viewport: '1920×1080', top: 210, left: 96, width: 1728 },
+    { viewport: '1440×900', top: 180, left: 72, width: 1296 },
+    { viewport: '1024px', top: 150, left: 24, width: 976 },
+    { viewport: '480px', top: 240, left: 10, width: 460 },
+  ])('$viewport 模拟不同画布位置和宽度，创建、移动、resize保持时间计算正确', async ({ top, left, width }) => {
+    const canvas = boot()
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ top, bottom: top + 1920, left, right: left + width, width, height: 1920, x: left, y: top, toJSON: () => ({}) })
+    const at = (target: EventTarget, event: string, minute: number) => pointer(target, event, minute, { clientY: top + minute * MINUTE_HEIGHT, clientX: left + width / 2 })
+    at(canvas, 'pointerdown', 540)
+    at(window, 'pointermove', 660)
+    at(window, 'pointerup', 660)
+    await flushPromises()
+    await title('位置变化')
+    expect(records()[0]).toMatchObject({ startMinute: 540, endMinute: 660 })
+    at(app.get('.time-block').element, 'pointerdown', 570)
+    at(window, 'pointermove', 870)
+    at(window, 'pointerup', 870)
+    await nextTick()
+    expect(records()[0]).toMatchObject({ startMinute: 840, endMinute: 960 })
+    at(app.get('[data-testid="resize-end"]').element, 'pointerdown', 960)
+    at(window, 'pointerup', 1020)
+    await nextTick()
+    expect(records()[0]).toMatchObject({ startMinute: 840, endMinute: 1020 })
+  })
+
+  it('半小时块紧凑显示，编辑与resize不改变时间到像素的映射', async () => {
+    boot([item('short', 540, 570, '一个很长很长的半小时时间块标题')])
+    expect(app.get('.time-block').classes()).toContain('is-compact')
+    expect((app.get('.time-block').element as HTMLElement).style.height).toBe('37px')
+    expect(app.get('.block-title').attributes('title')).toContain('09:00 → 09:30')
+    await app.get('.block-title').trigger('click')
+    await title('改标题')
+    expect((app.get('.time-block').element as HTMLElement).style.height).toBe('37px')
+    await drag('short', 570, 600, 'end')
+    expect(app.get('.time-block').classes()).not.toContain('is-compact')
+    expect((app.get('.time-block').element as HTMLElement).style.height).toBe('77px')
+    expect(records()[0]).toMatchObject({ startMinute: 540, endMinute: 600, color: 'sage' })
+  })
 })

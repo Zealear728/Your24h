@@ -2,7 +2,8 @@
 import AppIcon from './components/AppIcon.vue'
 import TitleEditor from './components/TitleEditor.vue'
 import { useCanvas } from './composables/useCanvas'
-import { COLORS, COLOR_LABELS, DAY_MINUTES, formatDuration, formatRange, formatTime, HOUR_HEIGHT, MINUTE_HEIGHT } from './domain/time'
+import { DAY_MINUTES, formatDuration, formatRange, formatTime, HOUR_HEIGHT, MINUTE_HEIGHT } from './domain/time'
+import { colorStyle, PALETTE } from './domain/palette'
 import type { TimeRange } from './domain/time'
 
 const {
@@ -105,7 +106,7 @@ function rangeStyle(range: TimeRange) {
                     'is-compact': block.endMinute - block.startMinute === 30,
                     'palette-open': paletteId === block.id },
                 ]"
-                :style="rangeStyle(block)"
+                :style="[rangeStyle(block), colorStyle(block.color)]"
                 :aria-label="`${block.title || '新安排'}，${formatRange(block)}`"
                 :data-block-id="block.id"
                 @pointerdown.stop="startGesture($event, 'move', block)"
@@ -114,7 +115,7 @@ function rangeStyle(range: TimeRange) {
                 <div class="block-content">
                   <div class="block-heading">
                     <TitleEditor v-if="editor?.block.id === block.id" v-model="editor.text" @finish="finishEdit" />
-                    <button v-else class="block-title" :title="block.title" @pointerdown.stop @click="editBlock(block)">{{ block.title }}</button>
+                    <button v-else class="block-title" :title="`${block.title} · ${formatRange(block)}`" @pointerdown.stop @click="editBlock(block)">{{ block.title }}</button>
                     <span class="block-duration">{{ formatDuration(block) }}</span>
                   </div>
                   <div class="block-time">{{ formatTime(block.startMinute) }}<span>—</span>{{ formatTime(block.endMinute) }}</div>
@@ -127,13 +128,13 @@ function rangeStyle(range: TimeRange) {
                 </div>
 
                 <div v-if="paletteId === block.id" class="color-palette" role="group" aria-label="时间块颜色" @pointerdown.stop>
-                  <button v-for="color in COLORS" :key="color" :class="['color-swatch', `color-${color}`]" :aria-label="COLOR_LABELS[color]" :aria-pressed="(block.color || 'sage') === color" :title="COLOR_LABELS[color]" @click="setColor(block.id, color)"><AppIcon v-if="(block.color || 'sage') === color" name="check" /></button>
+                  <button v-for="color in PALETTE" :key="color.id" :class="['color-swatch', `color-${color.id}`]" :style="colorStyle(color.id)" :aria-label="color.label" :aria-pressed="(block.color || 'sage') === color.id" :title="color.label" @click="setColor(block.id, color.id)"><AppIcon v-if="(block.color || 'sage') === color.id" name="check" /></button>
                 </div>
                 <div class="resize-handle resize-bottom" aria-hidden="true" title="拖动调整结束时间" data-testid="resize-end" @pointerdown.stop="startGesture($event, 'end', block)"><span /></div>
                 <div v-if="gesture?.active && gesture.block?.id === block.id" class="gesture-label" :class="{ 'invalid-label': gesture.invalid }">{{ gesture.invalid ? '此处已有安排 · 松手回原位' : formatRange(block) }}</div>
               </article>
 
-              <div v-if="gesture?.kind === 'create'" class="creation-preview" :style="rangeStyle(gesture.preview)">
+              <div v-if="gesture?.kind === 'create'" class="creation-preview" :style="[rangeStyle(gesture.preview), colorStyle()]">
                 <span class="selection-plus">+</span><span class="selection-label">{{ formatRange(gesture.preview) }}</span>
               </div>
               <div v-if="isToday" class="now-line" :style="{ top: `${nowMinute * MINUTE_HEIGHT}px` }" aria-hidden="true"><span class="now-time">{{ formatTime(Math.floor(nowMinute)) }}</span><span class="now-dot" /></div>

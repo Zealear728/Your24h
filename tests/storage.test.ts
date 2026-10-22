@@ -37,4 +37,16 @@ describe('浏览器存储', () => {
     expect(loadBlocks(storage).warning).not.toBe('')
     expect(saveBlocks(storage, [item])).toBe(false)
   })
+
+  it('所有旧有效颜色和新增玫瑰色读取、再保存后保持原值', () => {
+    const colors = ['sage', 'lavender', 'peach', 'sky', 'neutral', 'rose'] as const
+    const blocks = colors.map((color, index) => ({ ...item, id: String(index), startMinute: index * 60, endMinute: index * 60 + 30, color }))
+    let raw = JSON.stringify(blocks)
+    const storage = { getItem: () => raw, setItem: (_key: string, value: string) => { raw = value } }
+    const restored = loadBlocks(storage)
+    expect(restored).toEqual({ blocks, warning: '' })
+    expect(raw).toBe(JSON.stringify(blocks))
+    saveBlocks(storage, restored.blocks)
+    expect(JSON.parse(raw)).toEqual(blocks)
+  })
 })
