@@ -18,7 +18,7 @@ export function useTheme() {
   watch(theme, value => {
     document.documentElement.dataset.theme = value
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    if (meta) meta.content = value === 'dark' ? '#252321' : '#f5f3ee'
+    if (meta) meta.content = value === 'dark' ? '#0b1120' : '#f5f3ee'
   }, { immediate: true, flush: 'sync' })
 
   function toggleTheme() {

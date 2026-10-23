@@ -69,7 +69,7 @@ describe('主题首帧、偏好与系统设置', () => {
     expect(document.documentElement.dataset.theme).toBe(expected)
     boot()
     expect(controls.theme.value).toBe(expected)
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe(expected === 'dark' ? '#252321' : '#f5f3ee')
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe(expected === 'dark' ? '#0b1120' : '#f5f3ee')
     expect(writes).not.toHaveBeenCalled()
     expect(localStorage.getItem(STORAGE_KEY)).toBe('keep schedule untouched')
   })

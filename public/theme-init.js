@@ -10,5 +10,5 @@
   const theme = preference ?? (systemDark ? 'dark' : 'light')
   document.documentElement.dataset.theme = theme
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.content = theme === 'dark' ? '#252321' : '#f5f3ee'
+  if (meta) meta.content = theme === 'dark' ? '#0b1120' : '#f5f3ee'
 })()

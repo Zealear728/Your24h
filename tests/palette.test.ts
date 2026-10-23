@@ -70,4 +70,22 @@ describe('默认配色与旧颜色兼容', () => {
       expect((values[1] + 0.05) / (values[0] + 0.05), `${foreground} on ${background}`).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  it('极夜的焦点框、时间线、按钮边框和滚动条对比度达到3:1', () => {
+    const darkSource = themesSource.split(':root[data-theme="dark"]')[1]
+    const tokens = Object.fromEntries([...darkSource.matchAll(/(--[\w-]+):\s*(#[\da-f]+);/gi)].map(match => [match[1], match[2]]))
+    const pairs = [
+      ['--focus', '--page-bg'], ['--focus', '--paper'], ['--focus', '--button-hover'],
+      ['--now-line', '--paper'], ['--button-border', '--paper'], ['--scroll-thumb', '--paper'],
+      ['--button-border', '--button-hover'], ['--accent-border', '--accent-hover'],
+      ['--keyboard-border', '--keyboard-bg'], ['--invalid-edge', '--invalid-bg'],
+    ]
+    for (const [foreground, background] of pairs) {
+      const values = [luminance(rgb(tokens[foreground])), luminance(rgb(tokens[background]))].sort((a, b) => a - b)
+      expect((values[1] + 0.05) / (values[0] + 0.05), `${foreground} on ${background}`).toBeGreaterThanOrEqual(3)
+    }
+    for (const color of PALETTE) {
+      expect((luminance(rgb(tokens['--focus'])) + 0.05) / (luminance(rgb(color.dark.hover)) + 0.05)).toBeGreaterThanOrEqual(3)
+    }
+  })
 })
