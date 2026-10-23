@@ -2,6 +2,7 @@
 import AppIcon from './components/AppIcon.vue'
 import TitleEditor from './components/TitleEditor.vue'
 import { useCanvas } from './composables/useCanvas'
+import { useTheme } from './composables/useTheme'
 import { DAY_MINUTES, formatDuration, formatRange, formatTime, HOUR_HEIGHT, MINUTE_HEIGHT } from './domain/time'
 import { colorStyle, PALETTE } from './domain/palette'
 import type { TimeRange } from './domain/time'
@@ -12,6 +13,7 @@ const {
   finishEdit, editBlock, removeBlock, setColor, startBlank, startGesture, pointerCancel, jumpToNow,
   changeDate, shiftDate, localDate, canvasKeydown, blockKeydown, retrySave,
 } = useCanvas()
+const { theme, themeNotice, toggleTheme } = useTheme()
 
 const hours = Array.from({ length: 25 }, (_, hour) => hour)
 function rangeStyle(range: TimeRange) {
@@ -61,12 +63,21 @@ function rangeStyle(range: TimeRange) {
             </label>
           </div>
           <div class="toolbar-actions">
+            <button
+              class="text-button theme-toggle"
+              :aria-label="theme === 'light' ? '切换到深色模式' : '切换到浅色模式'"
+              :aria-pressed="theme === 'dark'"
+              :title="theme === 'light' ? '当前为浅色，点击切换到深色' : '当前为深色，点击切换到浅色'"
+              @pointerdown.prevent.stop
+              @click="toggleTheme"
+            ><AppIcon :name="theme === 'light' ? 'sun' : 'moon'" /><span>{{ theme === 'light' ? 'Light' : 'Dark' }}</span></button>
             <button class="text-button today-button" @click="changeDate(localDate())">今天</button>
             <button class="now-button" :disabled="!isToday" @click="jumpToNow"><AppIcon name="clock" />跳到现在</button>
           </div>
         </div>
 
         <div class="canvas-meta"><span>24 小时，一张画布</span><span class="grid-label"><i />30 分钟吸附</span></div>
+        <div v-if="themeNotice" class="notice" role="status">{{ themeNotice }}</div>
         <div v-if="notice" class="notice" role="status">
           <span>{{ notice }}</span><button v-if="!saved" @click="retrySave">重试保存</button><button v-else aria-label="关闭提示" @click="notice = ''">×</button>
         </div>
@@ -106,7 +117,7 @@ function rangeStyle(range: TimeRange) {
                     'is-compact': block.endMinute - block.startMinute === 30,
                     'palette-open': paletteId === block.id },
                 ]"
-                :style="[rangeStyle(block), colorStyle(block.color)]"
+                :style="[rangeStyle(block), colorStyle(block.color, theme)]"
                 :aria-label="`${block.title || '新安排'}，${formatRange(block)}`"
                 :data-block-id="block.id"
                 @pointerdown.stop="startGesture($event, 'move', block)"
@@ -128,13 +139,13 @@ function rangeStyle(range: TimeRange) {
                 </div>
 
                 <div v-if="paletteId === block.id" class="color-palette" role="group" aria-label="时间块颜色" @pointerdown.stop>
-                  <button v-for="color in PALETTE" :key="color.id" :class="['color-swatch', `color-${color.id}`]" :style="colorStyle(color.id)" :aria-label="color.label" :aria-pressed="(block.color || 'sage') === color.id" :title="color.label" @click="setColor(block.id, color.id)"><AppIcon v-if="(block.color || 'sage') === color.id" name="check" /></button>
+                  <button v-for="color in PALETTE" :key="color.id" :class="['color-swatch', `color-${color.id}`]" :style="colorStyle(color.id, theme)" :aria-label="color.label" :aria-pressed="(block.color || 'sage') === color.id" :title="color.label" @click="setColor(block.id, color.id)"><AppIcon v-if="(block.color || 'sage') === color.id" name="check" /></button>
                 </div>
                 <div class="resize-handle resize-bottom" aria-hidden="true" title="拖动调整结束时间" data-testid="resize-end" @pointerdown.stop="startGesture($event, 'end', block)"><span /></div>
                 <div v-if="gesture?.active && gesture.block?.id === block.id" class="gesture-label" :class="{ 'invalid-label': gesture.invalid }">{{ gesture.invalid ? '此处已有安排 · 松手回原位' : formatRange(block) }}</div>
               </article>
 
-              <div v-if="gesture?.kind === 'create'" class="creation-preview" :style="[rangeStyle(gesture.preview), colorStyle()]">
+              <div v-if="gesture?.kind === 'create'" class="creation-preview" :style="[rangeStyle(gesture.preview), colorStyle(undefined, theme)]">
                 <span class="selection-plus">+</span><span class="selection-label">{{ formatRange(gesture.preview) }}</span>
               </div>
               <div v-if="isToday" class="now-line" :style="{ top: `${nowMinute * MINUTE_HEIGHT}px` }" aria-hidden="true"><span class="now-time">{{ formatTime(Math.floor(nowMinute)) }}</span><span class="now-dot" /></div>

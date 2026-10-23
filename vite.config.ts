@@ -8,5 +8,6 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     restoreMocks: true,
     clearMocks: true,
+    css: { include: [/themes\.css/] },
   },
 })

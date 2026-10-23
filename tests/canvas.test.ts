@@ -6,6 +6,7 @@ import App from '../src/App.vue'
 import { MINUTE_HEIGHT, localDate, shiftDate } from '../src/domain/time'
 import type { TimeBlock } from '../src/domain/time'
 import { STORAGE_KEY } from '../src/domain/storage'
+import { THEME_STORAGE_KEY } from '../src/composables/useTheme'
 
 let app: VueWrapper
 const today = localDate()
@@ -425,5 +426,84 @@ describe('画布DOM交互与持久化', () => {
     expect(app.get('.time-block').classes()).not.toContain('is-compact')
     expect((app.get('.time-block').element as HTMLElement).style.height).toBe('77px')
     expect(records()[0]).toMatchObject({ startMinute: 540, endMinute: 600, color: 'sage' })
+  })
+
+  it('鼠标切换主题保留新建输入框、焦点、选区和未提交标题，不改日程存储', async () => {
+    boot()
+    await draw(540)
+    const input = app.get('.title-input').element as HTMLInputElement
+    await app.get('.title-input').setValue('正在编辑中文标题')
+    input.setSelectionRange(2, 5)
+    const scroller = app.get('[data-testid="timeline-scroll"]').element
+    scroller.scrollTop = 160
+    const writes = vi.spyOn(Storage.prototype, 'setItem')
+    const down = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+    app.get('.theme-toggle').element.dispatchEvent(down)
+    expect(down.defaultPrevented).toBe(true)
+    await app.get('.theme-toggle').trigger('click')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(app.get('.theme-toggle').attributes('aria-pressed')).toBe('true')
+    expect(app.get('.title-input').element).toBe(input)
+    expect(document.activeElement).toBe(input)
+    expect([input.selectionStart, input.selectionEnd]).toEqual([2, 5])
+    expect(input.value).toBe('正在编辑中文标题')
+    expect(scroller.scrollTop).toBe(160)
+    expect(records()).toEqual([])
+    expect(writes).toHaveBeenCalledExactlyOnceWith(THEME_STORAGE_KEY, 'dark')
+    await title('正在编辑中文标题')
+    expect(records()[0]).toMatchObject({ title: '正在编辑中文标题', startMinute: 540, endMinute: 570, color: 'sage' })
+  })
+
+  it('已有标题切换明暗后仍能Esc取消，日程数据与颜色完全不变', async () => {
+    boot([{ ...item('old', 540, 660, '旧标题'), color: 'neutral' }])
+    const before = localStorage.getItem(STORAGE_KEY)
+    await app.get('.block-title').trigger('click')
+    await app.get('.title-input').setValue('还没决定')
+    await app.get('.theme-toggle').trigger('click')
+    expect((app.get('.time-block').element as HTMLElement).style.getPropertyValue('--block-bg')).toBe('#423E35')
+    await app.get('.theme-toggle').trigger('click')
+    expect((app.get('.time-block').element as HTMLElement).style.getPropertyValue('--block-bg')).toBe('#EEECE4')
+    await app.get('.title-input').trigger('keydown', { key: 'Escape' })
+    expect(app.get('.block-title').text()).toBe('旧标题')
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(before)
+  })
+
+  it('拖动选区中切换主题不取消手势，松手仍可正常输入保存', async () => {
+    const canvas = boot()
+    pointer(canvas, 'pointerdown', 540)
+    pointer(window, 'pointermove', 660)
+    await nextTick()
+    await app.get('.theme-toggle').trigger('click')
+    expect(app.get('.selection-label').text()).toContain('09:00 → 11:00')
+    expect((app.get('.creation-preview').element as HTMLElement).style.getPropertyValue('--block-bg')).toBe('#364333')
+    pointer(window, 'pointerup', 660)
+    await flushPromises()
+    await title('夜间写作业')
+    expect(records()[0]).toMatchObject({ startMinute: 540, endMinute: 660, color: 'sage' })
+  })
+
+  it('深色下移动、resize、冲突回退、调色板和跨日保存继续正常', async () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark')
+    boot([item('one', 540, 660, '写作业'), item('two', 840, 960, 'Blender')])
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    await drag('one', 570, 870)
+    expect(records()[0]).toMatchObject({ startMinute: 540, endMinute: 660 })
+    await drag('two', 870, 1170)
+    expect(records()[1]).toMatchObject({ startMinute: 1140, endMinute: 1260 })
+    await drag('two', 1260, 1320, 'end')
+    expect(records()[1]).toMatchObject({ startMinute: 1140, endMinute: 1320 })
+    await app.get('[aria-label="更换 Blender 的颜色"]').trigger('click')
+    expect((app.get('[aria-label="晴空"]').element as HTMLElement).style.getPropertyValue('--block-bg')).toBe('#30434E')
+    await app.get('.theme-toggle').trigger('click')
+    expect(app.find('.color-palette').exists()).toBe(true)
+    expect((app.get('[aria-label="晴空"]').element as HTMLElement).style.getPropertyValue('--block-bg')).toBe('#BFDFF0')
+    await app.get('.theme-toggle').trigger('click')
+    await app.get('[aria-label="晴空"]').trigger('click')
+    expect(records()[1].color).toBe('sky')
+    const before = records()
+    await app.get('[aria-label="后一天"]').trigger('click')
+    await app.get('[aria-label="前一天"]').trigger('click')
+    expect(records()).toEqual(before)
+    expect(document.documentElement.dataset.theme).toBe('dark')
   })
 })
