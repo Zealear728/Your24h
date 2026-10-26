@@ -1,11 +1,12 @@
 <script setup lang="ts">
-defineProps<{ name: 'left' | 'right' | 'clock' | 'trash' | 'palette' | 'grip' | 'check' | 'pen' | 'arrow' | 'sun' | 'moon' | 'overview' }>()
+defineProps<{ name: 'left' | 'right' | 'clock' | 'trash' | 'palette' | 'grip' | 'check' | 'pen' | 'arrow' | 'sun' | 'moon' | 'overview' | 'backup' }>()
 </script>
 
 <template>
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path v-if="name === 'left'" d="m14 6-6 6 6 6" />
     <path v-else-if="name === 'right'" d="m10 6 6 6-6 6" />
+    <g v-else-if="name === 'backup'"><path d="M12 3v11m-4-4 4 4 4-4M5 15v5h14v-5" /></g>
     <g v-else-if="name === 'overview'"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 7h6M9 11h6M9 15h3M9 18h6" /></g>
     <g v-else-if="name === 'sun'"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></g>
     <path v-else-if="name === 'moon'" d="M20.5 13.2A8.6 8.6 0 0 1 10.8 3a8.6 8.6 0 1 0 9.7 10.2Z" />

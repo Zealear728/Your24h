@@ -50,6 +50,7 @@ export function useDayView(canvas: ReturnType<typeof useCanvas>) {
 
   function escape(event: KeyboardEvent) {
     if (!isOverview.value || event.key !== 'Escape') return
+    if (event.target instanceof Element && event.target.closest('[data-backup]')) return
     event.preventDefault()
     event.stopImmediatePropagation()
     void leaveOverview()

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import AppIcon from './components/AppIcon.vue'
 import TitleEditor from './components/TitleEditor.vue'
 import DayOverview from './components/DayOverview.vue'
+import DataBackup from './components/DataBackup.vue'
 import { useCanvas } from './composables/useCanvas'
 import { useDayView } from './composables/useDayView'
 import { useTheme } from './composables/useTheme'
@@ -18,6 +20,7 @@ const {
 } = canvasState
 const { isOverview, toggleView, leaveOverview, changeDate, jumpToNow } = useDayView(canvasState)
 const { theme, themeNotice, toggleTheme } = useTheme()
+const backupOpen = ref(false)
 
 const hours = Array.from({ length: 25 }, (_, hour) => hour)
 function rangeStyle(range: TimeRange) {
@@ -67,6 +70,7 @@ function rangeStyle(range: TimeRange) {
             </label>
           </div>
           <div class="toolbar-actions">
+            <DataBackup :block-count="canvasState.blocks.value.length" :has-uncommitted-edit="!!editor" :restore="canvasState.restoreBackup" @open-change="backupOpen = $event" />
             <button class="text-button view-toggle" :aria-pressed="isOverview" :aria-label="isOverview ? '返回编辑模式' : '打开全日概览'" @pointerdown.prevent.stop @click="toggleView"><AppIcon :name="isOverview ? 'pen' : 'overview'" />{{ isOverview ? '返回编辑' : '全日概览' }}</button>
             <button
               class="text-button theme-toggle"
@@ -131,7 +135,7 @@ function rangeStyle(range: TimeRange) {
                 <div class="resize-handle resize-top" aria-hidden="true" title="拖动调整开始时间" data-testid="resize-start" @pointerdown.stop="startGesture($event, 'start', block)"><span /></div>
                 <div class="block-content">
                   <div class="block-heading">
-                    <TitleEditor v-if="editor?.block.id === block.id" v-model="editor.text" :suspended="isOverview" @finish="finishEdit" />
+                    <TitleEditor v-if="editor?.block.id === block.id" v-model="editor.text" :suspended="isOverview || backupOpen" @finish="finishEdit" />
                     <button v-else class="block-title" :title="`${block.title} · ${formatRange(block)}`" @pointerdown.stop @click="editBlock(block)">{{ block.title }}</button>
                     <span class="block-duration">{{ formatDuration(block) }}</span>
                   </div>

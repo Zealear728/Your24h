@@ -6,7 +6,7 @@ import {
 import type { TimeBlock, TimeRange } from '../domain/time'
 import { nextBlockColor } from '../domain/palette'
 import type { BlockColor } from '../domain/palette'
-import { loadBlocks, saveBlocks } from '../domain/storage'
+import { loadBlocks, saveBlocks, validateBlocks } from '../domain/storage'
 
 type GestureKind = 'create' | 'move' | 'start' | 'end'
 interface Gesture {
@@ -49,6 +49,7 @@ export function useCanvas() {
   let timer: ReturnType<typeof setInterval> | undefined
   let feedbackTimer: ReturnType<typeof setTimeout> | undefined
   let scrollFrame = 0
+  let replacing = false
 
   const isToday = computed(() => selectedDate.value === localDate(now.value))
   const dayBlocks = computed(() => blocks.value.filter(block => block.date === selectedDate.value).sort((a, b) => a.startMinute - b.startMinute))
@@ -64,6 +65,7 @@ export function useCanvas() {
   const yearLabel = computed(() => selectedDate.value.slice(0, 4))
 
   watch(blocks, value => {
+    if (replacing) return
     saved.value = Boolean(storage && saveBlocks(storage, value))
     if (!saved.value) notice.value = '暂时无法保存到浏览器。请先保留此页面，允许本地存储或腾出空间后重试。'
   }, { deep: true, flush: 'sync' })
@@ -78,6 +80,22 @@ export function useCanvas() {
     try { storage = window.localStorage } catch { storage = undefined }
     saved.value = Boolean(storage && saveBlocks(storage, blocks.value))
     if (saved.value) notice.value = ''
+  }
+
+  function restoreBackup(data: unknown): boolean {
+    const restored = validateBlocks(data)
+    try { storage = window.localStorage } catch { return false }
+    // Persist first, once. A denied/quota write must not change either the canvas or its draft.
+    if (!saveBlocks(storage, restored)) return false
+    stopGesture()
+    editor.value = null
+    paletteId.value = null
+    replacing = true
+    try { blocks.value = restored } finally { replacing = false }
+    saved.value = true
+    notice.value = ''
+    announce(`已恢复 ${restored.length} 个时间块`)
+    return true
   }
 
   function finishEdit(cancel = false) {
@@ -306,6 +324,6 @@ export function useCanvas() {
     canvas, scroller, blocks, editor, gesture, paletteId, notice, saved, feedback, now, selectedDate,
     isToday, nowMinute, dayBlocks, visibleBlocks, dateLabel, weekday, yearLabel, keyboardMinute,
     finishEdit, editBlock, removeBlock, setColor, startBlank, startGesture, pointerCancel, jumpToNow,
-    changeDate, shiftDate, localDate, canvasKeydown, blockKeydown, retrySave, stopGesture,
+    changeDate, shiftDate, localDate, canvasKeydown, blockKeydown, retrySave, stopGesture, restoreBackup,
   }
 }

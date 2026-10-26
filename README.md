@@ -1,4 +1,4 @@
-# 每天 · 时间画布
+# Your 24h · 你的24小时
 
 一个独立的个人日程 Web App。用鼠标在一天的时间轴上画出安排；没有账户、后端或外部日历集成。
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-然后在浏览器中打开终端显示的本地地址，通常是 `http://127.0.0.1:5173`。关闭终端或按 `Ctrl+C` 可停止服务。
+然后在浏览器中打开终端显示的本地地址，通常是 `http://127.0.0.1:5173/Your24h/`。关闭终端或按 `Ctrl+C` 可停止服务。现在配置了 GitHub Pages 的项目路径 `/Your24h/`；只改变同一来源下的路径不会清空原来根路径的 localStorage。
 
 如果已经安装依赖，只需 `npm run dev`。
 
@@ -24,9 +24,88 @@ npm run build
 npm run preview
 ```
 
-预览地址通常为 `http://127.0.0.1:4173`。正式文件在 `dist/`，可以托管到静态网站服务。不要直接双击 `dist/index.html`。
+预览地址通常为 `http://127.0.0.1:4173/Your24h/`。正式文件在 `dist/`，可以托管到静态网站服务。不要直接双击 `dist/index.html`。
 
-**重要：**安排保存在当前浏览器、当前网站地址对应的 localStorage 中。开发地址与预览地址的端口不同，数据各自独立；`localhost` 和 `127.0.0.1` 也不同。日常使用请固定同一地址、端口和浏览器。清除网站数据或结束隐私浏览可能清空安排。该 MVP 不跨设备同步，也不提供备份功能。
+**重要：**安排保存在当前浏览器、当前网站来源对应的 localStorage 中。开发地址与预览地址的端口不同，数据各自独立；`localhost` 和 `127.0.0.1` 也不同。日常使用请固定同一地址、端口和浏览器。清除网站数据或结束隐私浏览可能清空安排。应用提供手动 JSON 备份，不跨设备自动同步。
+
+## Release 01：备份与 GitHub Pages 发布
+
+本轮只完成代码和部署准备，**尚未执行提交、推送或线上发布，也未确认线上地址可用**。开始时已确认在 `main`、工作区干净，远程仓库为 `Zealear728/Your24h`，保留了全日概览和极夜星图。
+
+### 先备份原来的日程
+
+1. 在项目文件夹运行 `npm run dev`，用你原来保存日程的浏览器、主机名和端口打开应用。例如，之前使用 `http://localhost:5173`，现在打开 `http://localhost:5173/Your24h/`；如果原来使用 `127.0.0.1`，请继续用它。
+2. 先 Enter 保存需要保留的标题；未提交输入不包含在备份中。
+3. 顶部工具栏点「数据备份」→「导出备份」。浏览器会下载 `your24h-backup-YYYY-MM-DD.json`，包含所有日期的已保存时间块，不仅是当天。
+4. 在浏览器下载列表确认文件存在，妥善放在项目文件夹之外。不要把个人备份放进 `public/`、`dist/` 或 Git 仓库。
+
+备份含 `format: "your24h-backup"`、`version: 1`、UTC 导出时间和 `blocks`。文件名使用当地日期；时间块日期仍为当地 `YYYY-MM-DD`。不包含账户、主题偏好或未保存草稿，不会发送给服务器。
+
+### 导入备份
+
+点「数据备份」→「导入备份」，选择本地 JSON。应用会先完整检查格式、版本、ID 唯一性、日期、30 分钟网格、00:00–24:00 范围、非空标题、有效颜色和同日重叠。
+
+校验成功后显示日期数和时间块数，并明确提示整份替换。可以先点击「先导出当前已保存数据」，然后主动勾选替换确认，点「确认替换并恢复」。空备份会额外提示将清空日程。未提交标题在真正确认替换后会取消；需要保留时先取消导入、保存标题，再操作。
+
+确认前不写入数据；任一记录非法会拒绝整份备份。恢复先完成一次 localStorage 写入，再更新画布；写入失败保留原有日程与草稿。取消导入、关闭菜单不覆盖数据。成功后普通模式和全日概览立即更新，当前日期与 Light / Dark 偏好保持不变。
+
+旧版合法的原始 TimeBlock 数组也可严格校验后恢复；缺省颜色按原规则显示为 Sage，旧燕麦 `neutral` 继续有效。不提供数据合并或自动冲突处理。
+
+### 启用 Pages、提交与推送
+
+部署配置依据 [Vite 官方 GitHub Pages 指南](https://vite.dev/guide/static-deploy.html#github-pages) 与 [GitHub 官方自定义 Pages 工作流说明](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。仓库子路径为 `/Your24h/`，工作流使用当前 Vite 官方示例中的 Actions 提交固定版本，采用 Node 24、现有锁文件的 `npm ci`，执行测试、类型检查、构建和本地子路径资源检查，仅上传 `dist/`。
+
+1. 打开 [Your24h 仓库](https://github.com/Zealear728/Your24h)，进入 **Settings → Pages**。
+2. 在 **Build and deployment → Source** 选择 **GitHub Actions**。不用创建其他部署平台或手工上传 `dist/`。
+3. 本地运行以下检查：
+
+   ```sh
+   npm test
+   npm run build
+   npm run check:pages
+   ```
+
+4. 确认备份已下载到项目外，在项目文件夹执行：
+
+   ```sh
+   git branch --show-current
+   git status
+   ```
+
+   分支应为 `main`。确认文件列表不含个人日程后，再自行提交、推送：
+
+   ```sh
+   git add .
+   git commit -m "Release 01: JSON backups and GitHub Pages deployment"
+   git push origin main
+   ```
+
+   本轮没有替你运行以上 Git 写入操作。若推送提示远程有新提交或分支异常，请保留报错并检查原因，不要强制推送或重置历史。
+
+### 确认部署并恢复日程
+
+1. 打开仓库的 [Actions](https://github.com/Zealear728/Your24h/actions)，找到 **Deploy Your 24h to GitHub Pages**。
+2. 等待 `build` 和 `deploy` 两个任务都变绿；若失败，打开失败步骤查看原因。未在推送时触发，可在工作流页面使用 **Run workflow**，选择 `main`。
+3. 点击成功部署记录中的页面链接，或在 Settings → Pages 查看发布地址。预期地址为 [Your 24h 正式站点](https://zealear728.github.io/Your24h/)，**以实际部署成功后的结果为准**。
+4. 在正式网站点「数据备份」→「导入备份」，选择之前从原 localhost 页面导出的文件，核对日期数和时间块数，再主动确认恢复。
+5. 检查今天、其他日期、颜色、全日概览，刷新页面后再确认数据仍在。
+
+localhost 与 `https://zealear728.github.io` 是不同来源，localStorage **不会自动共享**。部署代码不会携带你的本地日程；正式站点的数据仍只存在该浏览器中。不同设备、不同浏览器之间要手动导出 / 导入，本轮没有云同步。
+
+以后每次把新代码正常推送到 `main`，同一工作流会自动重新测试、构建并更新固定网址；不需要每天运行开发服务。网站更新不会主动清空日程，但清理网站数据、换浏览器或改域名不会自动迁移数据，请定期导出备份。
+
+### 发布检查边界与人工验收
+
+`npm run check:pages` 临时启动本地开发和生产预览 HTTP 服务，检查 `/Your24h/` 页面及其 JS、CSS、图标、首帧主题脚本的状态、路径和内容，然后关闭服务。不启动真实浏览器，不访问浏览器 localStorage，也不把预览服务作为正式服务器。
+
+本轮没有操作真实浏览器、Windows UI、Tauri 或线上 GitHub 设置；Actions 权限、实际下载 / 文件选择、线上部署和视觉效果仍需要你检查：
+
+- [ ] 原 localhost 页面导出的文件包含多个日期；在测试浏览器中导入后能恢复完整日程。
+- [ ] 错误文件没有确认按钮；合法文件不确认、取消或关闭菜单，都保留原数据。
+- [ ] 恢复前能先导出旧数据，确认后立即更新；刷新后数据和主题仍在。
+- [ ] 宽窄窗口、Light / Dark、全日概览下菜单可用，原有创建、移动、resize、删除不受影响。
+- [ ] Actions 两个任务成功，正式网页能加载图标、夜间首帧与所有资源，没有 404。
+- [ ] 在正式站点手动导入旧备份，并检查多个日期、颜色和刷新后的保存。
 
 ## 怎么使用
 
@@ -61,6 +140,7 @@ src/
     TitleEditor.vue          标题输入、自动聚焦与中文输入法处理
     AppIcon.vue              小型 SVG 图标
     DayOverview.vue          只读全日概览、分钟比例排版和点击定位
+    DataBackup.vue           轻量备份菜单、文件下载、导入预览与覆盖确认
   composables/
     useCanvas.ts             创建、移动、调整大小、日期与交互状态
     useTheme.ts              手动主题切换、系统默认和偏好保存
@@ -69,6 +149,7 @@ src/
     palette.ts               五种文具配色、旧颜色兼容与默认颜色轮换
     time.ts                  时间换算、吸附、半开区间、碰撞和边界计算
     storage.ts               本地保存、读取及损坏数据校验
+    backup.ts                JSON导入导出格式与严格整份校验
 tests/
   time.test.ts               时间与重叠规则测试
   storage.test.ts            存储恢复、损坏数据与失败处理测试
@@ -76,7 +157,11 @@ tests/
   theme.test.ts              首帧初始化、系统默认、手动偏好与保存异常测试
   canvas.test.ts             Vue DOM事件交互和持久化测试
   overview.test.ts           概览比例、只读、定位、滚动恢复与编辑往返测试
+  backup.test.ts             多日期备份、格式及所有字段验证
+  backup-ui.test.ts          下载、确认、取消、恢复失败与画布更新
   setup.ts                   DOM测试所需的指针捕获模拟
+scripts/check-pages.mjs       本地开发及生产预览的子路径HTTP检查
+.github/workflows/deploy.yml  main更新后的测试、构建与Pages部署
 ```
 
 数据格式：`{ id, date, startMinute, endMinute, title, color? }`。日期使用本地年月日，不通过 UTC 截取。存储键是独立的 `day-canvas.blocks.v1`。无效、重复或重叠的存储记录会跳过并提示，合法记录继续恢复；读取损坏数据后不会立即覆盖原数据，下一次修改才保存新的记录。写入失败时显示提示，并提供重试按钮。
