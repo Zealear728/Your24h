@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import AppIcon from './components/AppIcon.vue'
 import TitleEditor from './components/TitleEditor.vue'
+import DayOverview from './components/DayOverview.vue'
 import { useCanvas } from './composables/useCanvas'
+import { useDayView } from './composables/useDayView'
 import { useTheme } from './composables/useTheme'
 import { DAY_MINUTES, formatDuration, formatRange, formatTime, HOUR_HEIGHT, MINUTE_HEIGHT } from './domain/time'
 import { colorStyle, PALETTE } from './domain/palette'
 import type { TimeRange } from './domain/time'
 
+const canvasState = useCanvas()
 const {
   canvas, scroller, editor, gesture, paletteId, notice, saved, feedback, selectedDate,
   isToday, nowMinute, dayBlocks, visibleBlocks, dateLabel, weekday, yearLabel, keyboardMinute,
-  finishEdit, editBlock, removeBlock, setColor, startBlank, startGesture, pointerCancel, jumpToNow,
-  changeDate, shiftDate, localDate, canvasKeydown, blockKeydown, retrySave,
-} = useCanvas()
+  finishEdit, editBlock, removeBlock, setColor, startBlank, startGesture, pointerCancel,
+  shiftDate, localDate, canvasKeydown, blockKeydown, retrySave,
+} = canvasState
+const { isOverview, toggleView, leaveOverview, changeDate, jumpToNow } = useDayView(canvasState)
 const { theme, themeNotice, toggleTheme } = useTheme()
 
 const hours = Array.from({ length: 25 }, (_, hour) => hour)
@@ -63,6 +67,7 @@ function rangeStyle(range: TimeRange) {
             </label>
           </div>
           <div class="toolbar-actions">
+            <button class="text-button view-toggle" :aria-pressed="isOverview" :aria-label="isOverview ? '返回编辑模式' : '打开全日概览'" @pointerdown.prevent.stop @click="toggleView"><AppIcon :name="isOverview ? 'pen' : 'overview'" />{{ isOverview ? '返回编辑' : '全日概览' }}</button>
             <button
               class="text-button theme-toggle"
               :aria-label="theme === 'light' ? '切换到深色模式' : '切换到浅色模式'"
@@ -76,13 +81,14 @@ function rangeStyle(range: TimeRange) {
           </div>
         </div>
 
-        <div class="canvas-meta"><span>24 小时，一张画布</span><span class="grid-label"><i />30 分钟吸附</span></div>
+        <div class="canvas-meta"><span>24 小时，一张画布</span><span class="grid-label"><i />{{ isOverview ? '全日概览 · 只读' : '30 分钟吸附' }}</span></div>
         <div v-if="themeNotice" class="notice" role="status">{{ themeNotice }}</div>
         <div v-if="notice" class="notice" role="status">
           <span>{{ notice }}</span><button v-if="!saved" @click="retrySave">重试保存</button><button v-else aria-label="关闭提示" @click="notice = ''">×</button>
         </div>
 
-        <div ref="scroller" class="timeline-scroll" data-testid="timeline-scroll">
+        <DayOverview v-if="isOverview" :blocks="dayBlocks" :theme="theme" :is-today="isToday" :now-minute="nowMinute" @locate="leaveOverview" />
+        <div v-show="!isOverview" ref="scroller" class="timeline-scroll" :inert="isOverview" data-testid="timeline-scroll">
           <div class="timeline-layout" :style="{ height: `${DAY_MINUTES * MINUTE_HEIGHT}px` }">
             <div class="time-gutter" aria-hidden="true">
               <span v-for="hour in hours" :key="hour" class="hour-label" :style="{ top: `${hour * HOUR_HEIGHT}px` }">{{ String(hour).padStart(2, '0') }}<span>:00</span></span>
@@ -95,9 +101,9 @@ function rangeStyle(range: TimeRange) {
               aria-label="时间画布，用上下方向键选择时间，Enter 创建"
               aria-describedby="canvas-help keyboard-help"
               data-testid="canvas"
-              @pointerdown="startBlank"
+              @pointerdown="!isOverview && startBlank($event)"
               @lostpointercapture="pointerCancel"
-              @keydown="canvasKeydown"
+              @keydown="!isOverview && canvasKeydown($event)"
             >
               <div class="keyboard-cell" :style="rangeStyle({ startMinute: keyboardMinute, endMinute: keyboardMinute + 30 })"><span>{{ formatTime(keyboardMinute) }} · Enter 创建</span></div>
               <div v-if="!dayBlocks.length && !editor && !gesture" class="empty-hint" :style="{ top: `${10 * HOUR_HEIGHT + 20}px` }" aria-hidden="true">
@@ -125,7 +131,7 @@ function rangeStyle(range: TimeRange) {
                 <div class="resize-handle resize-top" aria-hidden="true" title="拖动调整开始时间" data-testid="resize-start" @pointerdown.stop="startGesture($event, 'start', block)"><span /></div>
                 <div class="block-content">
                   <div class="block-heading">
-                    <TitleEditor v-if="editor?.block.id === block.id" v-model="editor.text" @finish="finishEdit" />
+                    <TitleEditor v-if="editor?.block.id === block.id" v-model="editor.text" :suspended="isOverview" @finish="finishEdit" />
                     <button v-else class="block-title" :title="`${block.title} · ${formatRange(block)}`" @pointerdown.stop @click="editBlock(block)">{{ block.title }}</button>
                     <span class="block-duration">{{ formatDuration(block) }}</span>
                   </div>
@@ -154,7 +160,8 @@ function rangeStyle(range: TimeRange) {
         </div>
 
         <footer class="sheet-footer">
-          <span id="canvas-help"><AppIcon name="pen" /><span>单击或拖动创建<span class="footer-divider">·</span><kbd>Enter</kbd> 保存<span class="footer-divider">·</span><kbd>Esc</kbd> 取消</span></span>
+          <span v-if="isOverview" id="canvas-help"><AppIcon name="overview" /><span>只读概览<span class="footer-divider">·</span>点击时间段定位<span class="footer-divider">·</span><kbd>Esc</kbd> 返回</span></span>
+          <span v-else id="canvas-help"><AppIcon name="pen" /><span>单击或拖动创建<span class="footer-divider">·</span><kbd>Enter</kbd> 保存<span class="footer-divider">·</span><kbd>Esc</kbd> 取消</span></span>
           <span class="sheet-signature">YOUR DAY, YOUR PACE.</span>
         </footer>
       </section>

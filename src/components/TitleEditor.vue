@@ -1,14 +1,26 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 
-defineProps<{ modelValue: string }>()
+const props = defineProps<{ modelValue: string; suspended?: boolean }>()
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   finish: [cancel?: boolean]
 }>()
 const input = ref<HTMLInputElement | null>(null)
+let selection: [number | null, number | null] = [null, null]
+watch(() => props.suspended, async suspended => {
+  if (suspended) {
+    selection = [input.value?.selectionStart ?? null, input.value?.selectionEnd ?? null]
+  } else {
+    await nextTick()
+    if (props.suspended) return
+    input.value?.focus({ preventScroll: true })
+    if (selection[0] !== null && selection[1] !== null) input.value?.setSelectionRange(selection[0], selection[1])
+  }
+})
 onMounted(async () => {
   await nextTick()
+  if (props.suspended) return
   input.value?.focus()
   input.value?.select()
 })
@@ -35,6 +47,6 @@ function keydown(event: KeyboardEvent) {
     @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     @pointerdown.stop
     @keydown="keydown"
-    @blur="emit('finish')"
+    @blur="!suspended && emit('finish')"
   />
 </template>

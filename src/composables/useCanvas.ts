@@ -54,7 +54,7 @@ export function useCanvas() {
   const dayBlocks = computed(() => blocks.value.filter(block => block.date === selectedDate.value).sort((a, b) => a.startMinute - b.startMinute))
   const visibleBlocks = computed(() => {
     const list = [...dayBlocks.value]
-    if (editor.value?.isNew) list.push(editor.value.block)
+    if (editor.value?.isNew && editor.value.block.date === selectedDate.value) list.push(editor.value.block)
     return list.map(block => gesture.value?.block?.id === block.id && gesture.value.active
       ? { ...block, ...gesture.value.preview } : block)
   })
@@ -306,6 +306,6 @@ export function useCanvas() {
     canvas, scroller, blocks, editor, gesture, paletteId, notice, saved, feedback, now, selectedDate,
     isToday, nowMinute, dayBlocks, visibleBlocks, dateLabel, weekday, yearLabel, keyboardMinute,
     finishEdit, editBlock, removeBlock, setColor, startBlank, startGesture, pointerCancel, jumpToNow,
-    changeDate, shiftDate, localDate, canvasKeydown, blockKeydown, retrySave,
+    changeDate, shiftDate, localDate, canvasKeydown, blockKeydown, retrySave, stopGesture,
   }
 }
